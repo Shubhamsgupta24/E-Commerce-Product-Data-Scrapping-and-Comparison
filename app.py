@@ -6,6 +6,8 @@ import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from fake_useragent import UserAgent
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 def SearchURL(product,base_url):
     if base_url == "https://www.amazon.in" :
@@ -55,9 +57,9 @@ def ScrapeHTML(url):
         return None
     
     #Testing
-    # paragraphs = soup.find_all('p')
-    # for p in paragraphs:
-    #     st.write(p.get_text())
+    # Write the scraped HTML to a file
+    with open("scraped_data.txt", "w", encoding="utf-8") as file:
+        file.write(str(soup))
     
     return soup
 
@@ -77,7 +79,6 @@ def DataFrameInitialization(parameters):
 
     for param in parameters:
         data[param] = []
-    # st.write(data)
     return data
 
 def scrape_amazon(product,parameters):
@@ -125,12 +126,21 @@ def scrape_amazon(product,parameters):
     if 'Link' in data:
         links = amazon_html.select('a.a-link-normal.s-underline-text.s-underline-link-text.s-link-style.a-text-normal')
         for link in links:
-            if 'href' in link.attrs:
-                href  = link['href']
-                full_link = search_url + href
-                data['Link'].append(full_link)
+            href  = link['href']
+            full_link = search_url + href
+            data['Link'].append(full_link)
             if len(data["Link"]) == len(data["Title"]):
                 break
+    
+    # Check if all lists have the same length after appending values
+    data_lengths = [len(data[key]) for key in data]
+    max_length = max(data_lengths)
+
+    # Ensure all lists have the same length
+    for key in data:
+        while len(data[key]) < max_length:
+            data[key].append('N/A')  # Append a default value
+
             
     df = pd.DataFrame.from_dict(data)
     return df
@@ -183,6 +193,15 @@ def scrape_flipkart(product,parameters):
             data['Link'].append(full_link)
             if len(data["Link"]) == len(data["Title"]):
                 break
+    
+    # Check if all lists have the same length after appending values
+    data_lengths = [len(data[key]) for key in data]
+    max_length = max(data_lengths)
+
+    # Ensure all lists have the same length
+    for key in data:
+        while len(data[key]) < max_length:
+            data[key].append('N/A')  # Append a default value
 
     df = pd.DataFrame.from_dict(data)
     return df
@@ -239,6 +258,16 @@ def scrape_croma(product,parameters):
             if len(data["Link"]) == len(data["Title"]):
                 break
 
+    # Check if all lists have the same length after appending values
+    data_lengths = [len(data[key]) for key in data]
+    max_length = max(data_lengths)
+
+    # Ensure all lists have the same length
+    for key in data:
+        while len(data[key]) < max_length:
+            data[key].append('N/A')  # Append a default value
+
+
     df = pd.DataFrame.from_dict(data)
     return df
 
@@ -252,10 +281,11 @@ def data_scraping_section():
     st.subheader("Product Information Retrieval")
 
     # Input Product Name
-    product = st.text_input("Enter the product name:", "")
+    product = st.text_input("Enter the product name:", st.session_state.get("product", ""))
 
     # Input Parameters
-    parameters = st.multiselect('Choose Parameters', ['Price', 'M.R.P', 'Ratings', 'Link'])
+    parameters = st.multiselect('Choose Parameters', ['Price', 'M.R.P', 'Ratings', 'Link'], st.session_state.get("parameters", []))
+
     st.write("Selected Parameters:")
     for param in parameters:
         st.write("- " + param)
@@ -263,6 +293,8 @@ def data_scraping_section():
     # Scraping
     if st.button("Scrape"):
         if product and parameters:
+            st.session_state.product = product
+            st.session_state.parameters = parameters
 
             df_amazon = scrape_amazon(product, parameters)
             st.dataframe(df_amazon)
@@ -279,6 +311,10 @@ def data_scraping_section():
             st.session_state.amazon_csv_path = "data_amazon.csv"
             st.session_state.flipkart_csv_path = "data_flipkart.csv"
 
+            # Save the DataFrames to session state
+            st.session_state.df_amazon = df_amazon
+            st.session_state.df_flipkart = df_flipkart
+
         else:
             st.warning("Please enter a product name and also choose the parameters for scraping")
 
@@ -286,20 +322,83 @@ def data_visualization_section():
     if 'data_scraped' not in st.session_state:
         st.warning("Please perform data scraping first.")
     else:
-        st.header("Data Visualization")
+    # if True:
 
-        # Load CSV files
+        #Load CSV files
         df_amazon = pd.read_csv(st.session_state.amazon_csv_path)
         df_flipkart = pd.read_csv(st.session_state.flipkart_csv_path)
+    
+        # Load CSV files for already scraped Amazon and Flipkart
+        # df_amazon = pd.read_csv("data_amazon.csv")
+        # df_flipkart = pd.read_csv("data_flipkart.csv")
 
-        # Your data visualization code goes here
+        # Starting the csv from index 1
+        df_amazon.index = range(1, len(df_amazon) + 1)
+        df_flipkart.index = range(1, len(df_flipkart) + 1)
+
+        # Display the data from CSV files
+        st.subheader("Amazon Data:")
+        st.write(df_amazon)
+
+        st.subheader("Flipkart Data:")
+        st.write(df_flipkart)
+
+        # Convert Price and MRP columns to numeric (remove ₹ sign) and comma
+        df_amazon['Price'] = df_amazon['Price'].replace({'₹': ''}, regex=True).str.replace(',', '').astype(float)
+        df_amazon['M.R.P'] = df_amazon['M.R.P'].replace({'₹': ''}, regex=True).str.replace(',', '').astype(float)
+        df_flipkart['Price'] = df_flipkart['Price'].replace({'₹': ''}, regex=True).str.replace(',', '').astype(float)
+        df_flipkart['M.R.P'] = df_flipkart['M.R.P'].replace({'₹': ''}, regex=True).str.replace(',', '').astype(float)
+
+        # First Graph: Price Vs MRP
+        st.subheader("Price vs M.R.P")
+        fig_price_mrp = plt.figure(figsize=(10, 5))
+        sns.scatterplot(data=df_amazon, x='Price', y='M.R.P', label='Amazon')
+        sns.scatterplot(data=df_flipkart, x='Price', y='M.R.P', label='Flipkart')
+        plt.title('Price vs M.R.P')
+        plt.xlabel('Price (in ₹)')
+        plt.ylabel('M.R.P (in ₹)')
+        plt.legend()
+        st.pyplot(fig_price_mrp)
+
+        # Second Graph: Highest Price and Lowest Price
+        # 1) Amazon
+        st.subheader("Price Range Distribution for Amazon")
+        fig_amazon_price_range = plt.figure(figsize=(9, 6))
+        highest_lowest_prices = pd.concat([df_amazon[['Price', 'Title']]], axis=0)
+        highest_lowest_prices = highest_lowest_prices.groupby('Title')['Price'].agg(['min', 'max'])
+        highest_lowest_prices = highest_lowest_prices.reset_index()
+        max_price = highest_lowest_prices['max'].max()
+        bins = range(0, int(max_price) + 10000, 5000)  # Adjust bin sizes dynamically
+        highest_lowest_prices['Price Range'] = pd.cut(highest_lowest_prices['min'], bins=bins, right=False)
+        price_range_counts_amazon = highest_lowest_prices['Price Range'].value_counts()
+        sns.countplot(data=highest_lowest_prices, y='Price Range', order=price_range_counts_amazon[price_range_counts_amazon > 0].index)
+        plt.title('Price Range Distribution for Amazon')
+        plt.xlabel('Count')
+        plt.ylabel('Price Range (in ₹)')
+        st.pyplot(fig_amazon_price_range)
+
+        # 2) Flipkart
+        st.subheader("Price Range Distribution for Flipkart")
+        fig_flipkart_price_range = plt.figure(figsize=(9, 6))
+        highest_lowest_prices = pd.concat([df_flipkart[['Price', 'Title']]], axis=0)
+        highest_lowest_prices = highest_lowest_prices.groupby('Title')['Price'].agg(['min', 'max'])
+        highest_lowest_prices = highest_lowest_prices.reset_index()
+        max_price = highest_lowest_prices['max'].max()
+        bins = range(0, int(max_price) + 10000, 5000)  # Adjust bin sizes dynamically
+        highest_lowest_prices['Price Range'] = pd.cut(highest_lowest_prices['min'], bins=bins, right=False)
+        price_range_counts_flipkart = highest_lowest_prices['Price Range'].value_counts()
+        sns.countplot(data=highest_lowest_prices, y='Price Range', order=price_range_counts_flipkart[price_range_counts_flipkart > 0].index)
+        plt.title('Price Range Distribution for Flipkart')
+        plt.xlabel('Count')
+        plt.ylabel('Price Range (in ₹)')
+        st.pyplot(fig_flipkart_price_range)
 
 def data_modeling_section():
     if 'data_scraped' not in st.session_state:
         st.warning("Please perform data scraping first.")
     else:
         st.header("Data Modeling")
-        
+
         # Load CSV files
         df_amazon = pd.read_csv(st.session_state.amazon_csv_path)
         df_flipkart = pd.read_csv(st.session_state.flipkart_csv_path)
@@ -324,7 +423,13 @@ def main():
     )
 
     # Sidebar menu
-    menu_selection = st.sidebar.radio("Menu", ["Data Scraping", "Data Visualization", "Data Modeling"])
+    menu_options = ["Data Scraping", "Data Visualization", "Data Modeling"]
+
+    # Display menu options vertically
+    for option in menu_options:
+        st.sidebar.write(option)
+    
+    menu_selection = st.sidebar.selectbox("", menu_options)
 
     # Main content based on menu selection
     if menu_selection == "Data Scraping":
