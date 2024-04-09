@@ -34,14 +34,17 @@ st.title('Product Comparison: Amazon vs Flipkart')
 
 # Display common products with a bar chart
 st.header('Common Products')
+df_common = df_common.copy()  # Make a copy to avoid modifying the original DataFrame
+df_common['Price (Amazon)'] = df_common['Price (Amazon)'].str.replace('$', '').astype(float)
+df_common['Price (Flipkart)'] = df_common['Price (Flipkart)'].str.replace('$', '').astype(float)
 st.dataframe(df_common.style.format({'Price (Amazon)': '${:.2f}', 'Price (Flipkart)': '${:.2f}'}))
 
 # Create a vertical bar chart for common products
 fig, ax = plt.subplots()
 bar_index = df_common.index
 bar_width = 0.35
-amazon_prices = df_common['Price (Amazon)'].str.replace('$', '').astype(float)
-flipkart_prices = df_common['Price (Flipkart)'].str.replace('$', '').astype(float)
+amazon_prices = df_common['Price (Amazon)']
+flipkart_prices = df_common['Price (Flipkart)']
 ax.bar(bar_index, amazon_prices, bar_width, label='Amazon', color='blue')
 ax.bar(bar_index + bar_width, flipkart_prices, bar_width, label='Flipkart', color='orange')
 ax.set_xticks(bar_index + bar_width / 2)
@@ -60,8 +63,12 @@ st.pyplot(fig)
 
 # Display unique products for Amazon without scrollbars
 st.header('Amazon Unique Products')
+df_amazon['Price (Amazon)'] = df_amazon['Price (Amazon)'].str.replace('$', '').astype(float)
+df_amazon['MRP (Amazon)'] = df_amazon['MRP (Amazon)'].str.replace('$', '').astype(float)
 st.dataframe(df_amazon[~df_amazon['Product'].isin(df_common['Product'])].style.format({'Price (Amazon)': '${:.2f}', 'MRP (Amazon)': '${:.2f}'}))
 
 # Display unique products for Flipkart without scrollbars
 st.header('Flipkart Unique Products')
+df_flipkart['Price (Flipkart)'] = df_flipkart['Price (Flipkart)'].str.replace('$', '').astype(float)
+df_flipkart['MRP (Flipkart)'] = df_flipkart['MRP (Flipkart)'].str.replace('$', '').astype(float)
 st.dataframe(df_flipkart[~df_flipkart['Product'].isin(df_common['Product'])].style.format({'Price (Flipkart)': '${:.2f}', 'MRP (Flipkart)': '${:.2f}'}))

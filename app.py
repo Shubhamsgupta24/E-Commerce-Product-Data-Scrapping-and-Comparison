@@ -187,7 +187,6 @@ def scrape_flipkart(product,parameters):
     df = pd.DataFrame.from_dict(data)
     return df
 
-
 def scrape_croma(product,parameters):
     croma_url = "https://www.croma.com"
     # search_url = SearchURL(product,croma_url)
@@ -248,13 +247,72 @@ def display_logo(logo_path):
     with col2:
         st.image(logo_path, width=200)
 
+def data_scraping_section():
+    st.header("Data Scraping")
+    st.subheader("Product Information Retrieval")
+
+    # Input Product Name
+    product = st.text_input("Enter the product name:", "")
+
+    # Input Parameters
+    parameters = st.multiselect('Choose Parameters', ['Price', 'M.R.P', 'Ratings', 'Link'])
+    st.write("Selected Parameters:")
+    for param in parameters:
+        st.write("- " + param)
+
+    # Scraping
+    if st.button("Scrape"):
+        if product and parameters:
+
+            df_amazon = scrape_amazon(product, parameters)
+            st.dataframe(df_amazon)
+            df_amazon.reset_index(drop=True, inplace=True)  #Satrting index from number 1
+            df_amazon.to_csv("data_amazon.csv", index=False)
+
+            df_flipkart = scrape_flipkart(product, parameters)
+            st.dataframe(df_flipkart)
+            df_flipkart.reset_index(drop=True, inplace=True)  #Starting index from number 1
+            df_flipkart.to_csv("data_flipkart.csv", index=False)
+
+            # Enable access to other sections and save CSV paths to session state
+            st.session_state.data_scraped = True
+            st.session_state.amazon_csv_path = "data_amazon.csv"
+            st.session_state.flipkart_csv_path = "data_flipkart.csv"
+
+        else:
+            st.warning("Please enter a product name and also choose the parameters for scraping")
+
+def data_visualization_section():
+    if 'data_scraped' not in st.session_state:
+        st.warning("Please perform data scraping first.")
+    else:
+        st.header("Data Visualization")
+
+        # Load CSV files
+        df_amazon = pd.read_csv(st.session_state.amazon_csv_path)
+        df_flipkart = pd.read_csv(st.session_state.flipkart_csv_path)
+
+        # Your data visualization code goes here
+
+def data_modeling_section():
+    if 'data_scraped' not in st.session_state:
+        st.warning("Please perform data scraping first.")
+    else:
+        st.header("Data Modeling")
+        
+        # Load CSV files
+        df_amazon = pd.read_csv(st.session_state.amazon_csv_path)
+        df_flipkart = pd.read_csv(st.session_state.flipkart_csv_path)
+
+        # Your data modeling code goes here
+
 def main():
     st.set_page_config(layout="wide")
     
     # Displaying logo and center aligning the logo
     display_logo("coep-logo.jpg")
 
-    #Header and subheader
+    # Header and subheader
     st.title("E-commerce Product Analysis")
     st.markdown(
         """
@@ -265,24 +323,18 @@ def main():
         unsafe_allow_html=True
     )
 
-    #Input Product Name
-    product = st.text_input("Enter the product name:", "")
+    # Sidebar menu
+    menu_selection = st.sidebar.radio("Menu", ["Data Scraping", "Data Visualization", "Data Modeling"])
 
-    #Input Parameters
-    parameters = st.multiselect('Choose Parameters',['Price','M.R.P','Ratings','Link'])
-    st.write("Selected Parameters:")
-    for param in parameters:
-        st.write("- " + param)
-    
-    #Scraping
-    if st.button("Scrape"):
-        if product and parameters:
-            # df_amazon = scrape_amazon(product,parameters)
-            df_flipkart = scrape_flipkart(product,parameters)
-            st.dataframe(df_flipkart)
-            df_flipkart.to_csv("data_flipkart.csv", index=False)
-        else:
-            st.warning("Please enter a product name and also choose the parameters for scraping")
+    # Main content based on menu selection
+    if menu_selection == "Data Scraping":
+        data_scraping_section()
+    elif menu_selection == "Data Visualization":
+        st.header("Data Visualization")
+        data_visualization_section()
+    elif menu_selection == "Data Modeling":
+        st.header("Data Modeling")
+        data_modeling_section()
 
 if __name__ == "__main__":
     main()
