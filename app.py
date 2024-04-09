@@ -123,9 +123,12 @@ def scrape_amazon(product,parameters):
 
     #5)Link
     if 'Link' in data:
-        links = amazon_html.select('h2.a-size-mini.a-spacing-none.a-color-base.s-line-clamp-2 > a')
+        links = amazon_html.select('a.a-link-normal.s-underline-text.s-underline-link-text.s-link-style.a-text-normal')
         for link in links:
-            data['Link'].append(link['href'])
+            if 'href' in link.attrs:
+                href  = link['href']
+                full_link = search_url + href
+                data['Link'].append(full_link)
             if len(data["Link"]) == len(data["Title"]):
                 break
             
@@ -175,7 +178,9 @@ def scrape_flipkart(product,parameters):
     if 'Link' in data:
         links = flipkart_html.select('a._1fQZEK')
         for link in links:
-            data['Link'].append(link['href'])
+            href = link['href']
+            full_link = search_url + href
+            data['Link'].append(full_link)
             if len(data["Link"]) == len(data["Title"]):
                 break
 
