@@ -1,13 +1,14 @@
 import streamlit as st
 import requests
 from fake_useragent import UserAgent
+from fake_useragent import UserAgent
 from bs4 import BeautifulSoup
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from fake_useragent import UserAgent
 import matplotlib.pyplot as plt
 import seaborn as sns
+import anthropic
 
 def SearchURL(product,base_url):
     if base_url == "https://www.amazon.in" :
@@ -278,7 +279,7 @@ def display_logo(logo_path):
 
 def data_scraping_section():
     st.header("Data Scraping")
-    st.subheader("Product Information Retrieval")
+    st.subheader("Electronic-Gadget Product Information Retrieval")
 
     # Input Product Name
     product = st.text_input("Enter the product name:", st.session_state.get("product", ""))
@@ -393,18 +394,103 @@ def data_visualization_section():
         plt.ylabel('Price Range (in ₹)')
         st.pyplot(fig_flipkart_price_range)
 
-def data_modeling_section():
-    if 'data_scraped' not in st.session_state:
-        st.warning("Please perform data scraping first.")
+def format_message(message_content):
+    # Extract text from the TextBlock
+    text_block = message_content[0].text
+    
+    # Split the extracted text by '\n\n'
+    lines = text_block.split('\n\n')
+    
+    # Join the lines with '\n' for display
+    return '\n'.join(lines)
+
+def model_query(df_amazon, df_flipkart, user_price_range, user_preferences, message_id=None):
+    client = anthropic.Anthropic(
+        api_key="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"
+    )
+
+    # Convert dataframes to JSON format
+    amazon_data = df_amazon.to_json(orient='records')
+    flipkart_data = df_flipkart.to_json(orient='records')
+
+    # Check if user input is relevant to the provided datasets
+    amazon_product_names = set(df_amazon['Title'].str.lower())
+    flipkart_product_names = set(df_flipkart['Title'].str.lower())
+    all_product_names = amazon_product_names.union(flipkart_product_names)
+    brand_names = set([name.split()[0].lower() for name in all_product_names])
+
+    user_input = f"{user_price_range} {user_preferences}".lower()
+    relevant_input = any(product_name in user_input for product_name in all_product_names) or \
+                     any(brand_name in user_input for brand_name in brand_names)
+
+    if relevant_input:
+        # Initial message to the API
+        initial_message = f"Here are the product datasets from Amazon and Flipkart:\n\nAmazon Data:\n{amazon_data}\n\nFlipkart Data:\n{flipkart_data}"
+        
+        # Send user preferences to the API
+        preference_message = f"User preferences: Price range {user_price_range}, {user_preferences}"
+
+        # Combine initial and preference messages
+        combined_message = initial_message + "\n\n" + preference_message
+
+        # Start a new conversation
+        message = client.messages.create(
+            model="claude-3-opus-20240229",
+            max_tokens=1500,
+            temperature=0,
+            messages=[{"role": "user", "content": combined_message}]
+        )
+
+        st.write(format_message(message.content))
+
     else:
-        st.header("Data Modeling")
+        st.write("The input you have provided is not related to the data scraped from the model.")
+
+def data_modeling_section():
+    # if 'data_scraped' not in st.session_state:
+    #     st.warning("Please perform data scraping first.")
+    # else:
+    if True:
+        # Load CSV files for already scraped Amazon and Flipkart
+        df_amazon = pd.read_csv("data_amazon.csv")
+        df_flipkart = pd.read_csv("data_flipkart.csv")
 
         # Load CSV files
-        df_amazon = pd.read_csv(st.session_state.amazon_csv_path)
-        df_flipkart = pd.read_csv(st.session_state.flipkart_csv_path)
+        # df_amazon = pd.read_csv(st.session_state.amazon_csv_path)
+        # df_flipkart = pd.read_csv(st.session_state.flipkart_csv_path)
 
-        # Your data modeling code goes here
+        # Header
+        st.title("🌟 Welcome to Our Exclusive Recommendation System! 🌟")
+        st.write("---")  # Horizontal line for separation
 
+        # Introduction
+        st.markdown("""
+            🎓 **Crafted by COEP Tech Students** 🎓
+            
+            Our recommendation system is exclusively designed by COEP Tech students to guide you.
+            
+            🛍️ **Find Your Perfect Product** 🛍️
+            
+            We're here to help you choose the right product that matches your desired features and price range.
+            
+            🤝 **Let's Make Informed Decisions Together** 🤝
+            
+            Join us in discovering the best products tailored just for you!
+        """)
+        st.write("---")  # Horizontal line for separation
+
+        # User input for price range and other preferences
+        st.header("📝 Tell Us What You're Looking For 📝")
+
+        # Price Range Input
+        price_range = st.text_input("Enter your desired price range (e.g., 10000-50000):", "10000-50000")
+
+        # Preferences Input
+        preferences = st.text_input("Enter any other preferences (e.g., high ratings, specific features):")
+
+        if st.button("Get Recommendations"):
+            model_query(df_amazon, df_flipkart, price_range, preferences)
+       
 def main():
     st.set_page_config(layout="wide")
     
@@ -416,7 +502,7 @@ def main():
     st.markdown(
         """
         <div style='margin-bottom: 40px;'>
-            <p style='font-size: 18px; color: #666;'>A Platform to analyze Features, Prices, and Reviews Across E-commerce Websites</p>
+            <p style='font-size: 18px; color: #666;'>A Platform to analyze Prices,Ratings,Discounts and Features Across E-commerce Websites</p>
         </div>
         """,
         unsafe_allow_html=True
