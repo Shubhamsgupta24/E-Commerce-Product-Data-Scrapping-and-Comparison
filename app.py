@@ -406,7 +406,7 @@ def format_message(message_content):
 
 def model_query(df_amazon, df_flipkart, user_price_range, user_preferences, message_id=None):
     client = anthropic.Anthropic(
-        api_key="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"
+        api_key="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"
     )
 
     # Convert dataframes to JSON format
@@ -447,17 +447,17 @@ def model_query(df_amazon, df_flipkart, user_price_range, user_preferences, mess
         st.write("The input you have provided is not related to the data scraped from the model.")
 
 def data_modeling_section():
-    # if 'data_scraped' not in st.session_state:
-    #     st.warning("Please perform data scraping first.")
-    # else:
-    if True:
-        # Load CSV files for already scraped Amazon and Flipkart
-        df_amazon = pd.read_csv("data_amazon.csv")
-        df_flipkart = pd.read_csv("data_flipkart.csv")
+    if 'data_scraped' not in st.session_state:
+        st.warning("Please perform data scraping first.")
+    else:
+    # if True:
+    #     # Load CSV files for already scraped Amazon and Flipkart
+    #     df_amazon = pd.read_csv("data_amazon.csv")
+    #     df_flipkart = pd.read_csv("data_flipkart.csv")
 
         # Load CSV files
-        # df_amazon = pd.read_csv(st.session_state.amazon_csv_path)
-        # df_flipkart = pd.read_csv(st.session_state.flipkart_csv_path)
+        df_amazon = pd.read_csv(st.session_state.amazon_csv_path)
+        df_flipkart = pd.read_csv(st.session_state.flipkart_csv_path)
 
         # Header
         st.title("🌟 Welcome to Our Exclusive Recommendation System! 🌟")
