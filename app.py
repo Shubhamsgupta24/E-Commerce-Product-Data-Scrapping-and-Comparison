@@ -406,7 +406,7 @@ def format_message(message_content):
 
 def model_query(df_amazon, df_flipkart, user_price_range, user_preferences, message_id=None):
     client = anthropic.Anthropic(
-        api_key="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"
+        api_key=""
     )
 
     # Convert dataframes to JSON format
